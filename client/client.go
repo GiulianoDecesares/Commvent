@@ -1,12 +1,12 @@
 package client
 
 import (
-	"fmt"
-	"log"
 	"net/url"
 	"time"
 
+	"github.com/GiulianoDecesares/commvent/primitives"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -20,13 +20,13 @@ const (
 type Client struct {
 	socket *websocket.Conn
 
-	eventsBuffer   chan Event
-	commandHandler func(commmand *Command)
+	eventsBuffer   chan primitives.Event
+	commandHandler func(commmand *primitives.Command)
 }
 
-func NewClient(commandHandler func(command *Command)) *Client {
+func NewClient(commandHandler func(command *primitives.Command)) *Client {
 	client := &Client{
-		eventsBuffer:   make(chan Event, eventsBufferSize),
+		eventsBuffer:   make(chan primitives.Event, eventsBufferSize),
 		commandHandler: commandHandler,
 	}
 
@@ -40,7 +40,7 @@ func (client *Client) Begin(url url.URL) error {
 
 	if client.socket, result = client.connect(url); result == nil {
 		client.socket.SetPingHandler(func(appData string) error {
-			// fmt.Println("Ping received. Sending pong")
+			log.Debug("Ping received. Sending pong")
 			return client.socket.WriteMessage(websocket.PongMessage, nil)
 		})
 
@@ -52,13 +52,13 @@ func (client *Client) Begin(url url.URL) error {
 }
 
 func (client *Client) Stop() error {
-	fmt.Println("Stopping client")
+	log.Debug("Stopping client")
 
 	close(client.eventsBuffer)
 	return client.socket.Close()
 }
 
-func (client *Client) SendEvent(event *Event) {
+func (client *Client) SendEvent(event *primitives.Event) {
 	if event != nil {
 		client.eventsBuffer <- *event
 	}
@@ -70,13 +70,13 @@ func (client *Client) receive() {
 	client.socket.SetReadLimit(maxMessageSize)
 
 	for {
-		command := &Command{}
+		command := &primitives.Command{}
 
 		if err := client.socket.ReadJSON(&command); err == nil {
 			client.commandHandler(command)
 		} else {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Errorf("Unexpected error while receiving: %s", err.Error())
 			}
 
 			break
@@ -90,7 +90,7 @@ func (client *Client) send() {
 		// client.socket.SetWriteDeadline(time.Now().Add(writeWait))
 
 		if !ok { // Check if closed channel
-			fmt.Println("Closing event buffer")
+			log.Debug("Closing event buffer")
 			client.socket.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
