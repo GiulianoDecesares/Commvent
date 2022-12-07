@@ -16,8 +16,10 @@ type Server struct {
 
 func NewServer(url url.URL) *Server {
 	return &Server{
-		url:      url,
-		upgrader: websocket.Upgrader{},
+		url: url,
+		upgrader: websocket.Upgrader{
+			CheckOrigin: checkOrigin,
+		},
 	}
 }
 
@@ -41,4 +43,8 @@ func (server *Server) onNewConnection(writer http.ResponseWriter, request *http.
 	} else {
 		log.Errorf("Error while trying to upgrade connection from client %s: %s", request.RequestURI, err.Error())
 	}
+}
+
+func checkOrigin(request *http.Request) bool {
+	return true // TODO :: Fix this possible security issue
 }
