@@ -115,7 +115,9 @@ func (client *Client) receive() {
 			event := &primitives.Event{}
 
 			if err := client.socket.ReadJSON(&event); err == nil {
-				client.eventHandler(event)
+				if client.eventHandler != nil {
+					client.eventHandler(event)
+				}
 			} else {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					client.error(fmt.Sprintf("Unexpected error while receiving: %v", err))

@@ -24,7 +24,7 @@ type Client struct {
 	commandHandler func(commmand *primitives.Command)
 }
 
-func NewClient(commandHandler func(command *primitives.Command)) *Client {
+func NewClient(commandHandler func(command *primitives.Command)) IClient {
 	client := &Client{
 		eventsBuffer:   make(chan primitives.Event, eventsBufferSize),
 		commandHandler: commandHandler,
