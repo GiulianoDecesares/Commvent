@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -24,25 +25,48 @@ func NewServer(url url.URL) *Server {
 }
 
 func (server *Server) Listen(onNewClient func(client *Client)) error {
-	log.Debug("Commvent server listening...")
+	if onNewClient == nil {
+		server.warning("Null client handler")
+	}
 
-	server.newClientHandler = onNewClient // Catch handler
+	server.info("Listening...")
+
+	server.newClientHandler = onNewClient
 	return http.ListenAndServe(server.url.Host, http.HandlerFunc(server.onNewConnection))
 }
 
 func (server *Server) onNewConnection(writer http.ResponseWriter, request *http.Request) {
 	ws, err := server.upgrader.Upgrade(writer, request, nil)
 
-	log.Debugf("New client %s trying to connect", request.RequestURI)
+	server.debug(fmt.Sprintf("Connection attempt from: %s", request.RequestURI))
 
 	if err == nil {
-		log.Debugf("New client %s connection upgraded to ws", request.RequestURI)
+		server.info(fmt.Sprintf("Client %s connected", request.RequestURI))
 
-		client := NewClient(ws)
-		server.newClientHandler(client)
+		if server.newClientHandler != nil {
+			server.newClientHandler(NewClient(ws))
+		} else {
+			server.warning(fmt.Sprintf("No handler to manage %s connection", request.RequestURI))
+		}
 	} else {
-		log.Errorf("Error while trying to upgrade connection from client %s: %s", request.RequestURI, err.Error())
+		server.error(fmt.Sprintf("Error while trying to upgrade connection from client %s: %s", request.RequestURI, err.Error()))
 	}
+}
+
+func (server *Server) debug(message string) {
+	log.Debugf("[Commvent Server] %s", message)
+}
+
+func (server *Server) info(message string) {
+	log.Infof("[Commvent Server] %s", message)
+}
+
+func (server *Server) warning(message string) {
+	log.Warnf("[Commvent Server] %s", message)
+}
+
+func (server *Server) error(message string) {
+	log.Errorf("[Commvent Server] %s", message)
 }
 
 func checkOrigin(request *http.Request) bool {

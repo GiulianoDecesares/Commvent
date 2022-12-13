@@ -25,3 +25,7 @@ func (command *Command) ToJson() []byte {
 	jsonData, _ := json.Marshal(command)
 	return jsonData
 }
+
+func (command *Command) ToString() string {
+	return string(command.ToJson())
+}

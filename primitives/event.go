@@ -25,3 +25,7 @@ func (event *Event) ToJson() []byte {
 	jsonData, _ := json.Marshal(event)
 	return jsonData
 }
+
+func (event *Event) ToString() string {
+	return string(event.ToJson())
+}

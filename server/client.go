@@ -48,8 +48,9 @@ func NewClient(socket *websocket.Conn) *Client {
 	client.socket.SetReadLimit(maxMessageSize)
 
 	client.socket.SetPongHandler(func(string) error {
-		client.debug("Pong received")
+		client.trace("Pong received")
 		client.updateReadDeadline() // Read while receiving pong from peer
+
 		return nil
 	})
 
@@ -75,7 +76,10 @@ func (client *Client) HandleDisconnect(handler func(disconnectionState error)) {
 
 func (client *Client) SendCommand(command *primitives.Command) {
 	if command != nil && client.open {
+		client.debug(fmt.Sprintf("Sending: %s", command.ToString()))
 		client.commandsBuffer <- *command
+	} else {
+		client.error(fmt.Sprintf("Error while sending %s", command.ToString()))
 	}
 }
 
@@ -88,7 +92,9 @@ func (client *Client) close() {
 		client.socket.WriteMessage(websocket.CloseMessage, []byte{})
 
 		client.pingTicker.Stop()
-		client.stop <- struct{}{} // Stop all coroutines safely
+
+		client.trace("Stoping all coroutines safely")
+		client.stop <- struct{}{}
 
 		close(client.commandsBuffer)
 		close(client.stop)
@@ -97,6 +103,8 @@ func (client *Client) close() {
 
 		if client.disconnectedHandler != nil {
 			client.disconnectedHandler(result)
+		} else {
+			client.error("Null disconnected handler")
 		}
 	}
 }
@@ -108,15 +116,19 @@ func (client *Client) receive() {
 	for {
 		select {
 		case <-client.stop:
-			client.debug("Receiving coroutine finished by stop mechanism")
+			client.trace("Receiving coroutine finished by stop mechanism")
 			return
 
 		default:
 			event := &primitives.Event{}
 
 			if err := client.socket.ReadJSON(&event); err == nil {
+
 				if client.eventHandler != nil {
+					client.debug(fmt.Sprintf("Received %s", event.ToString()))
 					client.eventHandler(event)
+				} else {
+					client.error(fmt.Sprintf("Null event handler while receiving event %s", event.ToString()))
 				}
 			} else {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -124,7 +136,7 @@ func (client *Client) receive() {
 				}
 
 				client.close()
-				client.debug("Receiving coroutine finished by close")
+				client.trace("Receiving coroutine finished by close")
 				return
 			}
 		}
@@ -137,7 +149,7 @@ func (client *Client) send() {
 	for {
 		select {
 		case <-client.stop:
-			client.debug("Sending coroutine finished by stop mechanism")
+			client.trace("Sending coroutine finished by stop mechanism")
 			return
 
 		case command := <-client.commandsBuffer:
@@ -146,6 +158,8 @@ func (client *Client) send() {
 			if err := client.socket.WriteJSON(command); err != nil {
 				client.error(fmt.Sprintf("Error while writing JSON: %v", err))
 				return
+			} else {
+				client.debug(fmt.Sprintf("Sent %s", command.ToString()))
 			}
 		}
 	}
@@ -157,11 +171,11 @@ func (client *Client) ping() {
 	for {
 		select {
 		case <-client.stop:
-			client.debug("Ping coroutine finished by stop mechanism")
+			client.trace("Ping coroutine finished by stop mechanism")
 			return
 
 		case <-client.pingTicker.C:
-			client.debug("Sending ping")
+			client.trace("Sending ping")
 			client.updateWriteDeadline()
 
 			if err := client.sendPing(); err != nil {
@@ -170,6 +184,14 @@ func (client *Client) ping() {
 			}
 		}
 	}
+}
+
+func (client *Client) getRemoteAddress() string {
+	return client.socket.RemoteAddr().Network()
+}
+
+func (client *Client) getLocalAddress() string {
+	return client.socket.LocalAddr().Network()
 }
 
 func (client *Client) updateWriteDeadline() {
@@ -184,10 +206,18 @@ func (client *Client) sendPing() error {
 	return client.socket.WriteMessage(websocket.PingMessage, nil)
 }
 
+func (client *Client) trace(message string) {
+	log.Tracef("[Client %s] %s", client.getLocalAddress(), message)
+}
+
 func (client *Client) debug(message string) {
-	log.Debugf("[Client %s] %s", client.socket.LocalAddr().String(), message)
+	log.Debugf("[Client %s] %s", client.getLocalAddress(), message)
+}
+
+func (client *Client) info(message string) {
+	log.Infof("[Client %s] %s", client.getLocalAddress(), message)
 }
 
 func (client *Client) error(message string) {
-	log.Errorf("[Client %s] %s", client.socket.LocalAddr().String(), message)
+	log.Errorf("[Client %s] %s", client.getLocalAddress(), message)
 }
