@@ -123,7 +123,6 @@ func (client *Client) receive() {
 			event := &primitives.Event{}
 
 			if err := client.socket.ReadJSON(&event); err == nil {
-
 				if client.eventHandler != nil {
 					client.debug(fmt.Sprintf("Received %s", event.ToString()))
 					client.eventHandler(event)

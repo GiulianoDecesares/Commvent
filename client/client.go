@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"net/url"
 	"time"
 
@@ -39,20 +40,24 @@ func (client *Client) Begin(url url.URL) error {
 	url.Scheme = "ws"
 
 	if client.socket, result = client.connect(url); result == nil {
+		client.info(fmt.Sprintf("Connection to %s established", url.Host))
+
 		client.socket.SetPingHandler(func(appData string) error {
-			log.Debug("Ping received. Sending pong")
+			client.trace("Ping received. Sending pong")
 			return client.socket.WriteMessage(websocket.PongMessage, nil)
 		})
 
 		go client.receive()
 		go client.send()
+	} else {
+		client.error(fmt.Sprintf("Error trying to connect to %s: %s", url.Host, result.Error()))
 	}
 
 	return result
 }
 
 func (client *Client) Stop() error {
-	log.Debug("Stopping client")
+	client.info("Closing")
 
 	close(client.eventsBuffer)
 	return client.socket.Close()
@@ -73,10 +78,15 @@ func (client *Client) receive() {
 		command := &primitives.Command{}
 
 		if err := client.socket.ReadJSON(&command); err == nil {
-			client.commandHandler(command)
+			if client.commandHandler != nil {
+				client.debug(fmt.Sprintf("Received %s", command.ToString()))
+				client.commandHandler(command)
+			} else {
+				client.error(fmt.Sprintf("Null command handler while receiving event %s", command.ToString()))
+			}
 		} else {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Errorf("Unexpected error while receiving: %s", err.Error())
+				client.error(fmt.Sprintf("Unexpected error while receiving: %v", err))
 			}
 
 			break
@@ -87,19 +97,43 @@ func (client *Client) receive() {
 func (client *Client) send() {
 	for {
 		event, ok := <-client.eventsBuffer
-		// client.socket.SetWriteDeadline(time.Now().Add(writeWait))
 
 		if !ok { // Check if closed channel
-			log.Debug("Closing event buffer")
+			client.trace("Events buffer closed")
 			client.socket.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
 
-		client.socket.WriteJSON(event)
+		if err := client.socket.WriteJSON(event); err != nil {
+			client.error(fmt.Sprintf("Error while writing JSON: %v", err))
+			return
+		} else {
+			client.debug(fmt.Sprintf("Sent %s", event.ToString()))
+		}
 	}
 }
 
 func (client *Client) connect(url url.URL) (*websocket.Conn, error) {
 	socket, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
 	return socket, err
+}
+
+func (client *Client) getLocalAddress() string {
+	return client.socket.LocalAddr().String()
+}
+
+func (client *Client) trace(message string) {
+	log.Tracef("[Client %s] %s", client.getLocalAddress(), message)
+}
+
+func (client *Client) debug(message string) {
+	log.Debugf("[Client %s] %s", client.getLocalAddress(), message)
+}
+
+func (client *Client) info(message string) {
+	log.Infof("[Client %s] %s", client.getLocalAddress(), message)
+}
+
+func (client *Client) error(message string) {
+	log.Errorf("[Client %s] %s", client.getLocalAddress(), message)
 }
