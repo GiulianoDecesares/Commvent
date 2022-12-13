@@ -76,7 +76,6 @@ func (client *Client) HandleDisconnect(handler func(disconnectionState error)) {
 
 func (client *Client) SendCommand(command *primitives.Command) {
 	if command != nil && client.open {
-		client.debug(fmt.Sprintf("Sending: %s", command.ToString()))
 		client.commandsBuffer <- *command
 	} else {
 		client.error(fmt.Sprintf("Error while sending %s", command.ToString()))

@@ -66,6 +66,8 @@ func (client *Client) Stop() error {
 func (client *Client) SendEvent(event *primitives.Event) {
 	if event != nil {
 		client.eventsBuffer <- *event
+	} else {
+		client.error(fmt.Sprintf("Error while sending %s", event.ToString()))
 	}
 }
 
