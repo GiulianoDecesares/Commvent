@@ -187,11 +187,11 @@ func (client *Client) ping() {
 }
 
 func (client *Client) getRemoteAddress() string {
-	return client.socket.RemoteAddr().Network()
+	return client.socket.RemoteAddr().String()
 }
 
 func (client *Client) getLocalAddress() string {
-	return client.socket.LocalAddr().Network()
+	return client.socket.LocalAddr().String()
 }
 
 func (client *Client) updateWriteDeadline() {
