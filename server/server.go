@@ -38,18 +38,18 @@ func (server *Server) Listen(onNewClient func(client *Client)) error {
 func (server *Server) onNewConnection(writer http.ResponseWriter, request *http.Request) {
 	ws, err := server.upgrader.Upgrade(writer, request, nil)
 
-	server.debug(fmt.Sprintf("Connection attempt from: %s", request.RequestURI))
+	server.debug(fmt.Sprintf("Connection attempt from: %s", request.RemoteAddr))
 
 	if err == nil {
-		server.info(fmt.Sprintf("Client %s connected", request.RequestURI))
+		server.info(fmt.Sprintf("Client %s connected", request.RemoteAddr))
 
 		if server.newClientHandler != nil {
 			server.newClientHandler(NewClient(ws))
 		} else {
-			server.warning(fmt.Sprintf("No handler to manage %s connection", request.RequestURI))
+			server.warning(fmt.Sprintf("No handler to manage %s connection", request.RemoteAddr))
 		}
 	} else {
-		server.error(fmt.Sprintf("Error while trying to upgrade connection from client %s: %s", request.RequestURI, err.Error()))
+		server.error(fmt.Sprintf("Error while trying to upgrade connection from client %s: %s", request.RemoteAddr, err.Error()))
 	}
 }
 

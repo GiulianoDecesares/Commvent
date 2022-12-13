@@ -206,17 +206,17 @@ func (client *Client) sendPing() error {
 }
 
 func (client *Client) trace(message string) {
-	log.Tracef("[Client %s] %s", client.getLocalAddress(), message)
+	log.Tracef("[Client %s] %s", client.getRemoteAddress(), message)
 }
 
 func (client *Client) debug(message string) {
-	log.Debugf("[Client %s] %s", client.getLocalAddress(), message)
+	log.Debugf("[Client %s] %s", client.getRemoteAddress(), message)
 }
 
 func (client *Client) info(message string) {
-	log.Infof("[Client %s] %s", client.getLocalAddress(), message)
+	log.Infof("[Client %s] %s", client.getRemoteAddress(), message)
 }
 
 func (client *Client) error(message string) {
-	log.Errorf("[Client %s] %s", client.getLocalAddress(), message)
+	log.Errorf("[Client %s] %s", client.getRemoteAddress(), message)
 }
