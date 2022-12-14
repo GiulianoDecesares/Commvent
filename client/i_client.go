@@ -10,5 +10,5 @@ type IClient interface {
 	Begin(url url.URL) error
 	Stop() error
 
-	SendEvent(event *primitives.Event)
+	SendEvent(event *primitives.Message)
 }

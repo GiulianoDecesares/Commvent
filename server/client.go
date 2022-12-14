@@ -28,10 +28,10 @@ type Client struct {
 
 	pingTicker *time.Ticker
 
-	commandsBuffer chan primitives.Command
+	commandsBuffer chan primitives.Message
 	stop           chan struct{}
 
-	eventHandler        func(event *primitives.Event)
+	eventHandler        func(event *primitives.Message)
 	disconnectedHandler func(disconnectionState error)
 }
 
@@ -40,7 +40,7 @@ func NewClient(socket *websocket.Conn) *Client {
 		socket:         socket,
 		open:           true,
 		pingTicker:     time.NewTicker(pingPeriod),
-		commandsBuffer: make(chan primitives.Command, commandsBufferSize),
+		commandsBuffer: make(chan primitives.Message, commandsBufferSize),
 		stop:           make(chan struct{}, 1),
 		eventHandler:   nil,
 	}
@@ -62,7 +62,7 @@ func NewClient(socket *websocket.Conn) *Client {
 	return client
 }
 
-func (client *Client) HandleEvents(handler func(event *primitives.Event)) {
+func (client *Client) HandleEvents(handler func(event *primitives.Message)) {
 	if handler != nil {
 		client.eventHandler = handler
 	}
@@ -74,7 +74,7 @@ func (client *Client) HandleDisconnect(handler func(disconnectionState error)) {
 	}
 }
 
-func (client *Client) SendCommand(command *primitives.Command) {
+func (client *Client) SendCommand(command *primitives.Message) {
 	if command != nil && client.open {
 		client.commandsBuffer <- *command
 	} else {
@@ -119,7 +119,7 @@ func (client *Client) receive() {
 			return
 
 		default:
-			event := &primitives.Event{}
+			event := &primitives.Message{}
 
 			if err := client.socket.ReadJSON(&event); err == nil {
 				if client.eventHandler != nil {

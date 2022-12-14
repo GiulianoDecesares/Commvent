@@ -21,13 +21,13 @@ const (
 type Client struct {
 	socket *websocket.Conn
 
-	eventsBuffer   chan primitives.Event
-	commandHandler func(commmand *primitives.Command)
+	eventsBuffer   chan primitives.Message
+	commandHandler func(commmand *primitives.Message)
 }
 
-func NewClient(commandHandler func(command *primitives.Command)) IClient {
+func NewClient(commandHandler func(command *primitives.Message)) IClient {
 	client := &Client{
-		eventsBuffer:   make(chan primitives.Event, eventsBufferSize),
+		eventsBuffer:   make(chan primitives.Message, eventsBufferSize),
 		commandHandler: commandHandler,
 	}
 
@@ -63,7 +63,7 @@ func (client *Client) Stop() error {
 	return client.socket.Close()
 }
 
-func (client *Client) SendEvent(event *primitives.Event) {
+func (client *Client) SendEvent(event *primitives.Message) {
 	if event != nil {
 		client.eventsBuffer <- *event
 	} else {
@@ -77,7 +77,7 @@ func (client *Client) receive() {
 	client.socket.SetReadLimit(maxMessageSize)
 
 	for {
-		command := &primitives.Command{}
+		command := &primitives.Message{}
 
 		if err := client.socket.ReadJSON(&command); err == nil {
 			if client.commandHandler != nil {
