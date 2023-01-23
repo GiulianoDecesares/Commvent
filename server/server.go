@@ -10,9 +10,8 @@ import (
 )
 
 type Server struct {
-	url              url.URL
-	upgrader         websocket.Upgrader
-	newClientHandler func(client *Client)
+	url      url.URL
+	upgrader websocket.Upgrader
 }
 
 func NewServer(url url.URL) *Server {
@@ -24,33 +23,31 @@ func NewServer(url url.URL) *Server {
 	}
 }
 
-func (server *Server) Listen(onNewClient func(client *Client)) error {
-	if onNewClient == nil {
-		server.warning("Null client handler")
-	}
-
-	server.info("Listening...")
-
-	server.newClientHandler = onNewClient
-	return http.ListenAndServe(server.url.Host, http.HandlerFunc(server.onNewConnection))
+func (server *Server) HandleHttp(endpoint string, handler http.Handler) {
+	http.Handle(endpoint, handler)
 }
 
-func (server *Server) onNewConnection(writer http.ResponseWriter, request *http.Request) {
-	ws, err := server.upgrader.Upgrade(writer, request, nil)
+func (server *Server) Handle(endpoint string, handler func(client *Client)) {
+	http.HandleFunc(endpoint, func(writer http.ResponseWriter, request *http.Request) {
+		server.debug(fmt.Sprintf("Connection attempt from: %s", request.RemoteAddr))
 
-	server.debug(fmt.Sprintf("Connection attempt from: %s", request.RemoteAddr))
+		if ws, err := server.upgrader.Upgrade(writer, request, nil); err == nil {
+			server.info(fmt.Sprintf("Client %s connected", request.RemoteAddr))
 
-	if err == nil {
-		server.info(fmt.Sprintf("Client %s connected", request.RemoteAddr))
-
-		if server.newClientHandler != nil {
-			server.newClientHandler(NewClient(ws))
+			if handler != nil {
+				handler(NewClient(ws))
+			} else {
+				server.warning(fmt.Sprintf("No handler to manage %s connection", request.RemoteAddr))
+			}
 		} else {
-			server.warning(fmt.Sprintf("No handler to manage %s connection", request.RemoteAddr))
+			server.error(fmt.Sprintf("Error while trying to upgrade connection from client %s: %s", request.RemoteAddr, err.Error()))
 		}
-	} else {
-		server.error(fmt.Sprintf("Error while trying to upgrade connection from client %s: %s", request.RemoteAddr, err.Error()))
-	}
+	})
+}
+
+func (server *Server) Listen() error {
+	server.info("Listening...")
+	return http.ListenAndServe(server.url.Host, nil)
 }
 
 func (server *Server) debug(message string) {

@@ -80,10 +80,12 @@ func Test(context *testing.T) {
 
 	testingCommand.SetString(testingKey, testingValue)
 
-	go currentSever.Listen(func(client *server.Client) {
+	currentSever.Handle("/", func(client *server.Client) {
 		context.Log("[Server] Server listening")
 		onNewServerClient(client, context)
 	})
+
+	go currentSever.Listen()
 
 	client := client.NewClient(func(command *primitives.Message) {
 		clientCommandHandler(command, context)
