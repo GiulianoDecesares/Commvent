@@ -23,8 +23,8 @@ func NewServer(url url.URL) *Server {
 	}
 }
 
-func (server *Server) HandleHttp(endpoint string, handler http.Handler) {
-	http.Handle(endpoint, handler)
+func (server *Server) HandleHttp(endpoint string, handler func(http.ResponseWriter, *http.Request)) {
+	http.HandleFunc(endpoint, handler)
 }
 
 func (server *Server) Handle(endpoint string, handler func(client *Client)) {
