@@ -17,16 +17,31 @@ const (
 )
 
 var (
-	address = url.URL{
-		Host: "localhost:5555",
-	}
-
 	sendEvents chan bool = make(chan bool)
 
 	testingCommand *primitives.Message = primitives.NewMessage("TESTING_COMMAND", "")
 	testingEvent   *primitives.Message = primitives.NewMessage("TESTING_EVENT", "")
 
-	currentSever  *server.Server = server.NewServer(address)
+	config server.ServerConfig = server.ServerConfig{
+		Server: struct {
+			Port string "yaml:\"port\""
+			Host string "yaml:\"host\""
+		}{
+			Port: "5555",
+			Host: "localhost",
+		},
+
+		ClientConfig: server.ClientConfig{
+			BufferSize:     256,
+			MaxMessageSize: 1024,
+
+			WriteWait:  10 * time.Second,
+			PongWait:   5 * time.Second,
+			PingPeriod: ((5 * time.Second) * 9) / 10,
+		},
+	}
+
+	currentSever  *server.Server = server.NewServer(config)
 	currentClient *server.Client
 
 	eventCounter int = 0
@@ -90,6 +105,10 @@ func Test(context *testing.T) {
 	client := client.NewClient(func(command *primitives.Message) {
 		clientCommandHandler(command, context)
 	})
+
+	var address url.URL = url.URL{
+		Host: config.Server.Host + ":" + config.Server.Port,
+	}
 
 	if err := client.Begin(address); err != nil {
 		context.Fatalf("Error while starting client: %s", err.Error())

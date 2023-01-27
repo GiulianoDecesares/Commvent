@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/GiulianoDecesares/commvent/primitives"
 	"github.com/gorilla/websocket"
@@ -13,9 +12,6 @@ import (
 const (
 	maxMessageSize   = 1024 // Maximum message size allowed from peer.
 	eventsBufferSize = 256
-
-	pongWait   = 30 * time.Second    // Time allowed to read the next pong message from the peer
-	pingPeriod = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait
 )
 
 type Client struct {
@@ -121,7 +117,13 @@ func (client *Client) connect(url url.URL) (*websocket.Conn, error) {
 }
 
 func (client *Client) getLocalAddress() string {
-	return client.socket.LocalAddr().String()
+	var address string = "-"
+
+	if client.socket != nil {
+		address = client.socket.LocalAddr().String()
+	}
+
+	return address
 }
 
 func (client *Client) trace(message string) {

@@ -3,20 +3,28 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
+type ServerConfig struct {
+	Server struct {
+		Port string `yaml:"port"`
+		Host string `yaml:"host"`
+	} `yaml:"server"`
+
+	ClientConfig ClientConfig `yaml:"client"`
+}
+
 type Server struct {
-	url      url.URL
+	config   ServerConfig
 	upgrader websocket.Upgrader
 }
 
-func NewServer(url url.URL) *Server {
+func NewServer(config ServerConfig) *Server {
 	return &Server{
-		url: url,
+		config: config,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: checkOrigin,
 		},
@@ -35,7 +43,7 @@ func (server *Server) Handle(endpoint string, handler func(client *Client)) {
 			server.info(fmt.Sprintf("Client %s connected", request.RemoteAddr))
 
 			if handler != nil {
-				handler(NewClient(ws))
+				handler(NewClient(ws, server.config.ClientConfig))
 			} else {
 				server.warning(fmt.Sprintf("No handler to manage %s connection", request.RemoteAddr))
 			}
@@ -47,7 +55,7 @@ func (server *Server) Handle(endpoint string, handler func(client *Client)) {
 
 func (server *Server) Listen() error {
 	server.info("Listening...")
-	return http.ListenAndServe(server.url.Host, nil)
+	return http.ListenAndServe(server.config.Server.Host+":"+server.config.Server.Port, nil)
 }
 
 func (server *Server) debug(message string) {

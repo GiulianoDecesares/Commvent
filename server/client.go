@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+/*
 const (
 	writeWait = 10 * time.Second // Time allowed to write a message to the peer.
 
@@ -20,11 +21,25 @@ const (
 
 	maxMessageSize = 1024 // Maximum message size allowed from peer.
 )
+*/
+
+type ClientConfig struct {
+	BufferSize     int   `yaml:"bufferSize"`
+	MaxMessageSize int64 `yaml:"maxMessageSize"`
+
+	WriteWait  time.Duration `yaml:"writeWait"`
+	PongWait   time.Duration `yaml:"pongWait"`
+	PingPeriod time.Duration `yaml:"pingPeriod"`
+}
 
 type Client struct {
 	socket *websocket.Conn
 
 	open bool
+
+	// Config settings
+	writeWait time.Duration
+	pongWait  time.Duration
 
 	pingTicker *time.Ticker
 
@@ -35,22 +50,23 @@ type Client struct {
 	disconnectedHandler func(disconnectionState error)
 }
 
-func NewClient(socket *websocket.Conn) *Client {
+func NewClient(socket *websocket.Conn, config ClientConfig) *Client {
 	client := &Client{
 		socket:         socket,
 		open:           true,
-		pingTicker:     time.NewTicker(pingPeriod),
-		commandsBuffer: make(chan primitives.Message, commandsBufferSize),
+		writeWait:      config.WriteWait,
+		pongWait:       config.PongWait,
+		pingTicker:     time.NewTicker(config.PingPeriod),
+		commandsBuffer: make(chan primitives.Message, config.BufferSize),
 		stop:           make(chan struct{}, 1),
 		eventHandler:   nil,
 	}
 
-	client.socket.SetReadLimit(maxMessageSize)
+	client.socket.SetReadLimit(config.MaxMessageSize)
 
 	client.socket.SetPongHandler(func(string) error {
 		client.trace("Pong received")
-		client.updateReadDeadline() // Read while receiving pong from peer
-
+		client.updateReadDeadline() // Allow read while receiving pong from peer
 		return nil
 	})
 
@@ -193,11 +209,11 @@ func (client *Client) getLocalAddress() string {
 }
 
 func (client *Client) updateWriteDeadline() {
-	client.socket.SetWriteDeadline(time.Now().Add(writeWait))
+	client.socket.SetWriteDeadline(time.Now().Add(client.writeWait))
 }
 
 func (client *Client) updateReadDeadline() {
-	client.socket.SetReadDeadline(time.Now().Add(pongWait))
+	client.socket.SetReadDeadline(time.Now().Add(client.pongWait))
 }
 
 func (client *Client) sendPing() error {
