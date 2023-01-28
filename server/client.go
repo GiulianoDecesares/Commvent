@@ -10,34 +10,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-/*
-const (
-	writeWait = 10 * time.Second // Time allowed to write a message to the peer.
-
-	commandsBufferSize = 256
-
-	pongWait   = 5 * time.Second     // Time allowed to read the next pong message from the peer.
-	pingPeriod = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait.
-
-	maxMessageSize = 1024 // Maximum message size allowed from peer.
-)
-*/
-
-type ClientConfig struct {
-	BufferSize     int   `yaml:"bufferSize"`
-	MaxMessageSize int64 `yaml:"maxMessageSize"`
-
-	WriteWait  time.Duration `yaml:"writeWait"`
-	PongWait   time.Duration `yaml:"pongWait"`
-	PingPeriod time.Duration `yaml:"pingPeriod"`
-}
-
 type Client struct {
 	socket *websocket.Conn
 
 	open bool
 
-	// Config settings
 	writeWait time.Duration
 	pongWait  time.Duration
 

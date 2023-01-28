@@ -8,15 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ServerConfig struct {
-	Server struct {
-		Port string `yaml:"port"`
-		Host string `yaml:"host"`
-	} `yaml:"server"`
-
-	ClientConfig ClientConfig `yaml:"client"`
-}
-
 type Server struct {
 	config   ServerConfig
 	upgrader websocket.Upgrader
